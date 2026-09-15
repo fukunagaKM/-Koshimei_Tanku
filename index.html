@@ -610,8 +610,9 @@ $liter.addEventListener('input', calc);
 
 // タンク容量の階級と配色（色覚多様性に配慮したOkabe-Ito配色を採用）
 // 各タンクの最大容量（=容器簿の一番上の行の容量）に対し、
-// 600 / 1500 / 2000 / 3000 / 4000 / 5000 / 6000 / 7000ℓ のうち
-// 最も近い基準値の階級に分類する（例：590ℓと652ℓは両方とも600ℓ階級）
+// ・600〜3000ℓ帯は 600/1500/2000/3000ℓ のうち最も近い基準値に分類
+// ・4000〜7000ℓ帯は百の位から切り捨てて千の位（4000/5000/6000/7000ℓ）で分類
+//   （例：4985ℓ→4000ℓ、6238ℓ→6000ℓ）
 const CAPACITY_TIERS = [
   { value: 600,  label: '600ℓ',  bg: '#F0E442', fg: '#1c1a17' },
   { value: 1500, label: '1500ℓ', bg: '#E69F00', fg: '#1c1a17' },
@@ -630,9 +631,18 @@ function tankMaxVolume(tankNo){
 }
 function capacityTier(vol){
   if (vol === null) return null;
-  let nearest = CAPACITY_TIERS[0];
+  const smallTiers = CAPACITY_TIERS.filter(t => t.value < 4000);
+  const largeTiers = CAPACITY_TIERS.filter(t => t.value >= 4000);
+
+  if (vol >= 4000){
+    // 4000〜7000ℓ帯は百の位（下3桁）を切り捨てて千の位で判定
+    const floored = Math.min(7000, Math.max(4000, Math.floor(vol / 1000) * 1000));
+    return largeTiers.find(t => t.value === floored) || largeTiers[largeTiers.length - 1];
+  }
+
+  let nearest = smallTiers[0];
   let minDiff = Math.abs(vol - nearest.value);
-  for (const tier of CAPACITY_TIERS){
+  for (const tier of smallTiers){
     const diff = Math.abs(vol - tier.value);
     if (diff < minDiff){
       minDiff = diff;
