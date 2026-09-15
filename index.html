@@ -207,6 +207,26 @@
     font-weight:600;
     color:var(--text-main);
   }
+  .modal-legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px 14px;
+    padding:12px 16px 14px;
+    border-top:1px solid var(--line);
+  }
+  .modal-legend-item{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:11px;
+    color:var(--text-dim);
+  }
+  .modal-legend-dot{
+    width:11px;
+    height:11px;
+    border-radius:50%;
+    flex-shrink:0;
+  }
 
   .mode-toggle{
     display:flex;
@@ -343,6 +363,7 @@
           <button type="button" id="tankModalClose" class="modal-close">×</button>
         </div>
         <div class="modal-body" id="tankModalBody"></div>
+        <div class="modal-legend" id="tankModalLegend"></div>
       </div>
     </div>
 
@@ -474,6 +495,7 @@ const $tankListBtn = document.getElementById('tankListBtn');
 const $tankModalOverlay = document.getElementById('tankModalOverlay');
 const $tankModalClose = document.getElementById('tankModalClose');
 const $tankModalBody = document.getElementById('tankModalBody');
+const $tankModalLegend = document.getElementById('tankModalLegend');
 const $outVolume = document.getElementById('outVolume');
 const $outRange = document.getElementById('outRange');
 const $outLabel = document.getElementById('outLabel');
@@ -586,9 +608,56 @@ $tankNo.addEventListener('change', calc);
 $mm.addEventListener('input', calc);
 $liter.addEventListener('input', calc);
 
+// タンク容量の階級と配色（色覚多様性に配慮したOkabe-Ito配色を採用）
+// 各タンクの最大容量（=容器簿の一番上の行の容量）に対し、
+// 600 / 1500 / 2000 / 3000 / 4000 / 5000 / 6000 / 7000ℓ のうち
+// 最も近い基準値の階級に分類する（例：590ℓと652ℓは両方とも600ℓ階級）
+const CAPACITY_TIERS = [
+  { value: 600,  label: '600ℓ',  bg: '#F0E442', fg: '#1c1a17' },
+  { value: 1500, label: '1500ℓ', bg: '#E69F00', fg: '#1c1a17' },
+  { value: 2000, label: '2000ℓ', bg: '#D55E00', fg: '#ffffff' },
+  { value: 3000, label: '3000ℓ', bg: '#CC79A7', fg: '#1c1a17' },
+  { value: 4000, label: '4000ℓ', bg: '#0072B2', fg: '#ffffff' },
+  { value: 5000, label: '5000ℓ', bg: '#56B4E9', fg: '#1c1a17' },
+  { value: 6000, label: '6000ℓ', bg: '#009E73', fg: '#ffffff' },
+  { value: 7000, label: '7000ℓ', bg: '#9AA0A6', fg: '#1c1a17' },
+];
+
+function tankMaxVolume(tankNo){
+  const table = TANKS[tankNo];
+  if (!table || !table.length) return null;
+  return table[0][1];
+}
+function capacityTier(vol){
+  if (vol === null) return null;
+  let nearest = CAPACITY_TIERS[0];
+  let minDiff = Math.abs(vol - nearest.value);
+  for (const tier of CAPACITY_TIERS){
+    const diff = Math.abs(vol - tier.value);
+    if (diff < minDiff){
+      minDiff = diff;
+      nearest = tier;
+    }
+  }
+  return nearest;
+}
+
 function openTankModal(){
   const nums = Object.keys(TANKS).map(Number).sort((a,b) => a-b);
-  $tankModalBody.innerHTML = nums.map(n => `<span class="modal-tank-chip">${n}</span>`).join('');
+
+  $tankModalBody.innerHTML = nums.map(n => {
+    const tier = capacityTier(tankMaxVolume(String(n)));
+    const style = tier ? `background:${tier.bg};color:${tier.fg};border-color:${tier.bg};` : '';
+    return `<span class="modal-tank-chip" style="${style}">${n}</span>`;
+  }).join('');
+
+  const usedTiers = CAPACITY_TIERS.filter(tier =>
+    nums.some(n => capacityTier(tankMaxVolume(String(n))) === tier)
+  );
+  $tankModalLegend.innerHTML = usedTiers.map(tier =>
+    `<span class="modal-legend-item"><span class="modal-legend-dot" style="background:${tier.bg};"></span>${tier.label}</span>`
+  ).join('');
+
   $tankModalOverlay.classList.add('is-open');
 }
 function closeTankModal(){
