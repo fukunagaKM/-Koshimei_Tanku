@@ -206,6 +206,18 @@
     font-size:14px;
     font-weight:600;
     color:var(--text-main);
+    cursor:pointer;
+    font-family:inherit;
+    -webkit-tap-highlight-color:transparent;
+    transition:transform 0.08s ease, filter 0.08s ease;
+  }
+  .modal-tank-chip:active{
+    transform:scale(0.94);
+    filter:brightness(0.9);
+  }
+  .modal-tank-chip:focus-visible{
+    outline:2px solid var(--amber-bright);
+    outline-offset:1px;
   }
   .modal-legend{
     display:flex;
@@ -658,7 +670,7 @@ function openTankModal(){
   $tankModalBody.innerHTML = nums.map(n => {
     const tier = capacityTier(tankMaxVolume(String(n)));
     const style = tier ? `background:${tier.bg};color:${tier.fg};border-color:${tier.bg};` : '';
-    return `<span class="modal-tank-chip" style="${style}">${n}</span>`;
+    return `<button type="button" class="modal-tank-chip" style="${style}" data-tank="${n}">${n}</button>`;
   }).join('');
 
   const usedTiers = CAPACITY_TIERS.filter(tier =>
@@ -670,6 +682,17 @@ function openTankModal(){
 
   $tankModalOverlay.classList.add('is-open');
 }
+function selectTankFromChip(tankNo){
+  $tankNo.value = String(tankNo);
+  closeTankModal();
+  calc();
+}
+$tankModalBody.addEventListener('click', (e) => {
+  const chip = e.target.closest('.modal-tank-chip');
+  if (chip && chip.dataset.tank){
+    selectTankFromChip(chip.dataset.tank);
+  }
+});
 function closeTankModal(){
   $tankModalOverlay.classList.remove('is-open');
 }
