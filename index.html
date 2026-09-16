@@ -623,19 +623,23 @@ $tankNo.addEventListener('change', calc);
 $mm.addEventListener('input', calc);
 $liter.addEventListener('input', calc);
 
-// タンク容量の階級と配色（色覚多様性に配慮したOkabe-Ito配色を採用）
+// タンク容量の階級と配色（参考画像の配色思想を踏襲し、色覚多様性に配慮した配色）
 // 各タンクの最大容量（=容器簿の一番上の行の容量）に対し、
-// ・600〜3000ℓ帯は 600/1500/2000/3000ℓ のうち最も近い基準値に分類
-// ・4000〜7000ℓ帯は百の位から切り捨てて千の位（4000/5000/6000/7000ℓ）で分類
-//   （例：4985ℓ→4000ℓ、6238ℓ→6000ℓ）
+// ・300〜400ℓ帯は十の位から切り捨てて百の位で分類（例：345ℓ→300ℓ、460ℓ→400ℓ）
+// ・600〜3000ℓ帯は 600/1000/1500/2000/3000ℓ のうち最も近い基準値に分類
+// ・4000〜7000ℓ帯は百の位から切り捨てて千の位で分類（例：4985ℓ→4000ℓ、6238ℓ→6000ℓ）
+// 配色は色相をはっきり変えつつ、隣り合う階級のコントラストも意識して選定
 const CAPACITY_TIERS = [
-  { value: 600,  label: '600ℓ',  bg: '#F0E442', fg: '#1c1a17' },
-  { value: 1500, label: '1500ℓ', bg: '#E69F00', fg: '#1c1a17' },
-  { value: 2000, label: '2000ℓ', bg: '#D55E00', fg: '#ffffff' },
-  { value: 3000, label: '3000ℓ', bg: '#CC79A7', fg: '#1c1a17' },
+  { value: 300,  label: '300ℓ',  bg: '#FFEB3B', fg: '#1c1a17' },
+  { value: 400,  label: '400ℓ',  bg: '#F5C400', fg: '#1c1a17' },
+  { value: 600,  label: '600ℓ',  bg: '#E69F00', fg: '#1c1a17' },
+  { value: 1000, label: '1000ℓ', bg: '#D55E00', fg: '#1c1a17' },
+  { value: 1500, label: '1500ℓ', bg: '#E8739E', fg: '#1c1a17' },
+  { value: 2000, label: '2000ℓ', bg: '#CC79A7', fg: '#1c1a17' },
+  { value: 3000, label: '3000ℓ', bg: '#8B5FBF', fg: '#ffffff' },
   { value: 4000, label: '4000ℓ', bg: '#0072B2', fg: '#ffffff' },
   { value: 5000, label: '5000ℓ', bg: '#56B4E9', fg: '#1c1a17' },
-  { value: 6000, label: '6000ℓ', bg: '#009E73', fg: '#ffffff' },
+  { value: 6000, label: '6000ℓ', bg: '#009E73', fg: '#1c1a17' },
   { value: 7000, label: '7000ℓ', bg: '#9AA0A6', fg: '#1c1a17' },
 ];
 
@@ -646,18 +650,24 @@ function tankMaxVolume(tankNo){
 }
 function capacityTier(vol){
   if (vol === null) return null;
-  const smallTiers = CAPACITY_TIERS.filter(t => t.value < 4000);
-  const largeTiers = CAPACITY_TIERS.filter(t => t.value >= 4000);
 
-  if (vol >= 4000){
-    // 4000〜7000ℓ帯は百の位（下3桁）を切り捨てて千の位で判定
-    const floored = Math.min(7000, Math.max(4000, Math.floor(vol / 1000) * 1000));
-    return largeTiers.find(t => t.value === floored) || largeTiers[largeTiers.length - 1];
+  // 300〜400ℓ帯：十の位を切り捨てて百の位で判定
+  if (vol < 500){
+    const floored = Math.min(400, Math.max(300, Math.floor(vol / 100) * 100));
+    return CAPACITY_TIERS.find(t => t.value === floored);
   }
 
-  let nearest = smallTiers[0];
+  // 4000〜7000ℓ帯：百の位を切り捨てて千の位で判定
+  if (vol >= 4000){
+    const floored = Math.min(7000, Math.max(4000, Math.floor(vol / 1000) * 1000));
+    return CAPACITY_TIERS.find(t => t.value === floored);
+  }
+
+  // 600〜3000ℓ帯：最も近い基準値で判定
+  const midTiers = CAPACITY_TIERS.filter(t => t.value >= 600 && t.value <= 3000);
+  let nearest = midTiers[0];
   let minDiff = Math.abs(vol - nearest.value);
-  for (const tier of smallTiers){
+  for (const tier of midTiers){
     const diff = Math.abs(vol - tier.value);
     if (diff < minDiff){
       minDiff = diff;
@@ -685,6 +695,9 @@ function openTankModal(){
 
   $tankModalOverlay.classList.add('is-open');
 }
+function closeTankModal(){
+  $tankModalOverlay.classList.remove('is-open');
+}
 function selectTankFromChip(tankNo){
   $tankNo.value = String(tankNo);
   closeTankModal();
@@ -696,9 +709,6 @@ $tankModalBody.addEventListener('click', (e) => {
     selectTankFromChip(chip.dataset.tank);
   }
 });
-function closeTankModal(){
-  $tankModalOverlay.classList.remove('is-open');
-}
 $tankListBtn.addEventListener('click', openTankModal);
 $tankModalClose.addEventListener('click', closeTankModal);
 $tankModalOverlay.addEventListener('click', (e) => {
